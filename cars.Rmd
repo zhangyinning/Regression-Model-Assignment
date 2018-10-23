@@ -1,0 +1,90 @@
+---
+title: "Motor Trend"
+author: "Yinning Zhang"
+date: "September 13, 2018"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+This project uses the dataset mtcars, which is available in R package. The purpose of this project is to analyze the impact of the variables on miles per gallon and to build a regression linear model for this relationship.
+The results shows that the transmission type does not have significant impact on MPG. Instead, the variables of weight and number of cylinders largely explain the difference in mpg. The final regression model is built on these variables. 
+
+## Preview the data
+
+```{r PreviewData, echo=TRUE}
+require(datasets)
+data("mtcars")
+head(mtcars)
+```
+
+## Get an overview of correlations between the variables
+
+```{r ggplot, echo=TRUE}
+library(GGally)
+g = ggpairs(mtcars, lower = list(continuous = wrap("smooth", method = "lm")))
+g
+```
+```{r AllVariableRegress, echo=TRUE}
+print(summary(lm(mpg~., data = mtcars)))
+```
+
+From the correlation matrix, we notice that cars with manual transmission seem to have higher mpg than cars with auto transmission. However, this relationship can be attributed by other variables. So, we choose the variable Weight, as its P-value is 0.06, we have more confidence of this variable's correlation to mpg. Let's see if the transmission type matters when we include the variable weight.
+
+## Select variables and build the regression model
+
+1. mpg ~ transmission+wt
+```{r ModelamWT, echo=TRUE}
+print(summary(lm(mpg~ wt + factor(am), data = mtcars)))
+```
+
+The p-value is 0.988. We fail to reject the null hypothesis. So, there is no significant difference between auto car and manual car.
+
+2. more variables
+
+Here, we add variables of cyl, disp, drat, and gear and use ANOVA test to see if these variables help reduce the least square residuals. 
+```{r ANOVA, echo=TRUE}
+fit1 <- lm(mpg ~ wt, data = mtcars)
+fit2 <- lm(mpg ~ wt + factor(cyl), data = mtcars)
+fit3 <- lm(mpg ~ wt + factor(cyl) + disp, data = mtcars)
+fit4 <- lm(mpg ~ wt + factor(cyl) + disp +drat, data = mtcars)
+fit5 <- lm(mpg ~ wt + factor(cyl) + disp +drat +gear, data = mtcars)
+anova(fit1, fit2, fit3, fit4, fit5)
+```
+
+The result indicates that including the variable cyl can largely reduce the sum of least sqaures of the residuals, and the P-value implies that this difference is significant. So, I will add cylinder into the regressor. 
+
+## Plot the model and analyze the residuals
+```{r PlotResiduals, echo=TRUE}
+par(mfrow = c(2, 2))
+plot(fit2)
+```
+
+The plots shows that there is no obvious pattern within the residuals. So, this seems a good model. 
+
+## Model result
+```{r FinalModel, echo=TRUE}
+summary(lm(mpg ~ wt*factor(cyl), data = mtcars))$coef
+```
+
+Conclusion: The estimated intercept of 4 cylinder cars is 39.57 while the intercept for 6 cylinder cars is estimated to be 39.57-11.16, and the intercept for 8 cylinder cars is 39.57-15.70. The estimated slope for 4 cylinder cars is -5.65, while the slope for 6 cylinder cars is estimated to be -5.65+2.87, and the slope for 8 cylinder cars is -5.65+3.45.
+
+
+Plot the data with the fitted line and with color coded by cylinder.
+```{r PlotFittedLine, echo=TRUE}
+g1=ggplot(mtcars, aes(x = wt, y = mpg, colour = factor(cyl)))
+g1= g1+geom_point(size=3, colour = "black")+geom_point(size=5)
+fit6 = lm(mpg ~ wt*factor(cyl), data = mtcars)
+g1 = g1+geom_abline(intercept = coef(fit6)[1], slope = coef(fit6)[2], size=2, colour = '#edb1b2')
+g1 = g1+geom_abline(intercept = coef(fit6)[1]+coef(fit6)[3], slope = coef(fit6)[2]+coef(fit6)[5], size = 2, colour ='#000000')
+g1 = g1 + geom_abline(intercept = coef(fit6)[1] +coef(fit6)[4], slope = coef(fit6)[2]+coef(fit6)[6], size = 2, colour = '#a8aec1')
+print(g1)
+```
+
